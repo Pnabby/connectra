@@ -1,9 +1,49 @@
-import { View, Text, StyleSheet, Image } from 'react-native'
+import {View, Text, StyleSheet, Image, TouchableOpacity} from 'react-native'
 import React from 'react'
 import { Video, ResizeMode } from 'expo-av'
 import Colors from '../../Utils/Colors'
+import * as WebBrowser from "expo-web-browser";
+import {useWarmUpBrowser} from "../../hooks/useWarmUpBrowser";
+import { useOAuth } from "@clerk/clerk-expo";
+import {supabase} from "../../Utils/SupabaseConfig";
+WebBrowser.maybeCompleteAuthSession();
 
 export default function LoginScreen() {
+    useWarmUpBrowser();
+
+    const { startOAuthFlow } = useOAuth({ strategy: "oauth_google" });
+
+    const onPress = React.useCallback(async () => {
+        try {
+            const { createdSessionId, signIn, signUp, setActive } =
+                await startOAuthFlow();
+
+            if (createdSessionId) {
+                await setActive({session: createdSessionId});
+                if(signUp?.emailAddress)
+                {
+
+                    const { data, error } = await supabase
+                        .from('Users')
+                        .insert([
+                            { name: signUp?.firstName,
+                                email: signUp?.emailAddress,
+                            username: (signUp?.emailAddress).split('@')[0]},
+                        ])
+                        .select()
+                        if(data)
+                        {
+                            console.log(data);
+                        }
+
+                }
+            } else {
+                // Use signIn or signUp for next steps such as MFA
+            }
+        } catch (err) {
+            console.error("OAuth error", err);
+        }
+    }, [startOAuthFlow]);
   return (
     <View style = {{flex:1}}>
       <Video
@@ -58,7 +98,10 @@ export default function LoginScreen() {
             }}>
                 <Text style={{fontFamily:'outfit',color:Colors.WHITE}}>Sign in with Email and Password</Text>
             </View>
-            <View style={{
+
+            <TouchableOpacity
+                onPress={onPress}
+                style={{
                 marginTop:10,
                 display:'flex',
                 flexDirection: 'row',
@@ -76,7 +119,7 @@ export default function LoginScreen() {
                     }}
                 />
                 <Text style={{fontFamily:'outfit'}}>Sign in with Google</Text>
-            </View>
+            </TouchableOpacity>
             <View style={{
                 marginTop:10,
                 display:'flex',
