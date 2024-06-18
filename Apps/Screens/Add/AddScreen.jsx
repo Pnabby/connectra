@@ -19,7 +19,7 @@ export default function AddScreen() {
             quality: 1,
         });
 
-        console.log(result);
+        //console.log(result);
 
         if (!result.canceled) {
             console.log(result.assets[0].uri)
@@ -36,7 +36,7 @@ export default function AddScreen() {
                     time: 15000,
                 }
             );
-            console.log("Thumbnail", uri);
+            //console.log("Thumbnail", uri);
             navigation.navigate('preview-screen',{
                 video:videoUri,
                 thumbnail:uri
@@ -53,7 +53,7 @@ export default function AddScreen() {
             justifyContent:'center',
             flex:1
         }}>
-         <Image source={require('./../../../assets/images/299060_folder_icon.png')}
+         <Image source={require('./../../../assets/images/upload.png')}
          style={{
              width:140,
              height:140
