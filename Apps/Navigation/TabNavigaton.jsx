@@ -19,6 +19,7 @@ export default function TabNavigation (){
         >
             <Tab.Screen name='Home' component={HomeScreen}
             options={{
+                headerShown:false,
                 tabBarIcon:({color,size})=>(
                     <Ionicons name="home" size={size} color={color}/>
 
@@ -35,6 +36,7 @@ export default function TabNavigation (){
             />
             <Tab.Screen name='Add' component={AddScreenNavigation}
                         options={{
+                            headerShown:false,
                             tabBarIcon:({color,size})=>(
                                 <Ionicons name="add-circle" size={size} color={color}/>
 
