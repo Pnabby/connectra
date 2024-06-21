@@ -4,19 +4,50 @@ import {useNavigation, useRoute} from "@react-navigation/native";
 import Colors from "../../Utils/Colors";
 import { Ionicons } from '@expo/vector-icons';
 import { s3bucket } from '../../Utils/S3BucketConfig';
+import {useUser} from "@clerk/clerk-expo";
+import { supabase } from '../../Utils/SupabaseConfig';
 
 export default function PreviewScreen() {
+    const { user } = useUser();
+    const email = user?.primaryEmailAddress.emailAddress;
     const params=useRoute().params
     const navigation=useNavigation();
     const [description, setDescription]= useState();
     const [videoUrl,setVideoUrl]=useState();
+    const [thumbnailUrl, setThumbnailUrl] = useState();
 
     useEffect(()=>{
         console.log(params)
     },[]);
     const publishHandler= async()=>{
-        await UploadFileToAws(params.video,'video');
-        await UploadFileToAws(params.thumbnail,'image');
+        try {
+            const videoUploadResp = await UploadFileToAws(params.video, 'video');
+            const thumbnailUploadResp = await UploadFileToAws(params.thumbnail, 'image');
+
+            if (videoUploadResp?.Location && thumbnailUploadResp?.Location) {
+                const { data, error } = await supabase
+                    .from('PostList')
+                    .insert([
+                        {
+                            videoUrl: videoUploadResp.Location,
+                            thumbnail: thumbnailUploadResp.Location,
+                            description: description,
+                            emailRef: email
+                        },
+                        
+                    ])
+                    .select()
+
+                if (error) {
+                    console.error('Error inserting data:', error);
+                } else {
+                    console.log('Data inserted:', data);
+                    navigation.goBack();
+                }
+            }
+        } catch (e) {
+            console.error('Error publishing:', e);
+        }
     }
     const UploadFileToAws= async(file,type)=>{
         const fileType = file.split('.').pop();
@@ -28,18 +59,19 @@ export default function PreviewScreen() {
            ContentType:type=='video'?`video/${fileType}`:`image/${fileType}`
         }
         try {
-            const data = await s3bucket.upload(params)
-            .promise().then(resp=>{
-                console.log("File Uploaded");
-                console.log("RESP:",resp.Location);
-                if(type=='video'){
-                    setVideoUrl(resp?.Location)
-                }else{
-                    console.log(resp.Location,videoUrl)
-                }
-            })
+            const data = await s3bucket.upload(params).promise();
+            console.log('File Uploaded:', data.Location);
+
+            if (type === 'video') {
+                setVideoUrl(data.Location);
+            } else {
+                setThumbnailUrl(data.Location);
+            }
+
+            return data;
         } catch (e) {
             console.log(e)
+            return null;
         }
     }
     return (

@@ -86,7 +86,7 @@ export default function LoginScreen() {
     
         <View style = {{
             position:'absolute',
-            bottom:50,
+            bottom:100,
         }}>
             <View style={{
                 display:'flex',
