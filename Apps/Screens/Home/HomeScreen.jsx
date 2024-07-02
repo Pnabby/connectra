@@ -1,18 +1,24 @@
 import React, {useEffect, useState} from 'react';
-import {Text, View} from 'react-native';
+import {FlatList, Image, Text, View} from 'react-native';
 import {useUser} from "@clerk/clerk-expo";
 import {supabase} from "../../Utils/SupabaseConfig";
-import {Image} from "react-native";
-import {FlatList} from "react-native-gesture-handler";
-import VideoThumbnailsItems from "./VideoThumbnailsItems";
+import VideoThumbnailItem from './VideoThumbnailItem';
 
 export default function HomeScreen(){
     const {user}=useUser();
+    const [videoList,setVideoList]= useState([]);
+    const [loading,setLoading] = useState(false);
+    const [loadCount,setLoadCount]=useState(0);
 
     useEffect(()=>{
         user&&updateProfileImage();
-        GetLastestVideoList();
+        setLoadCount(0)
+        GetLatestVideoList();
     },[user])
+
+    useEffect(()=>{
+        GetLatestVideoList
+    },[loadCount])
 
     const updateProfileImage=async ()=>{
         const {data,error}=await supabase
@@ -21,26 +27,49 @@ export default function HomeScreen(){
             .eq('email',user?.primaryEmailAddress?.emailAddress)
             .is('profileImage',null)
             .select();
-            console.log(data);
+            //console.log(data);
+            
     }
 
-    const GetLastestVideoList=async ()=>{
-        const {data,error}=await supabase
-            .from('PostList')
-            .select('*, Users(username,name,profileImage)')
-            .range(0,9);
+    const GetLatestVideoList= async()=>{
+        setLoading(true);
+        const {data,error} = await supabase
+        .from('PostList')
+        .select('*,Users(username,name,profileImage)')
+        .range(loadCount,loadCount+7)
+        .order('id',{ascending:false})
 
-        console.log(data);
-        console.log(error);
-
+        setVideoList(videoList=>[...videoList,...data]);
+        //console.log(data);
+        if (data){
+            setLoading(false);
+        }
+        
     }
     return (
         <View style={{padding:20,paddingTop:25}}>
             <View style={{display:'flex',flexDirection:'row',
-            justifyContent:'space-between',alignItems:'center'}}>
-            <Text style={{fontSize:30,fontFamily:'outfit-bold'}}>Connectra</Text>
-            <Image source={{uri:user?.imageUrl}}
-                   style={{width:50,height:50,borderRadius:99}}/>
+                justifyContent:'space-between',alignItems:'center'}}>
+                <Text 
+                style={{
+                    fontSize:30,fontFamily:'outfit-bold'
+                }}>Connectra</Text>
+                <Image source={{uri:user?.imageUrl}}
+                style={{width:50,height:50,borderRadius:99}}
+                />
+            </View>
+            <View>
+                <FlatList
+                    data={videoList}
+                    numColumns={2}
+                    style = {{display:'flex'}}
+                    onRefresh={GetLatestVideoList}
+                    refreshing={loading}
+                    onEndReached={()=>setLoadCount(loadCount+7)}
+                    renderItem={({item,index})=>(
+                        <VideoThumbnailItem video={item} />
+                    )}
+                />
             </View>
         </View>
     )
