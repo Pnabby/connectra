@@ -1,12 +1,18 @@
 import React, { useRef, useState } from 'react'
-import { Text, View,StyleSheet, Dimensions, Image } from 'react-native'
+import { Text, View,StyleSheet, Dimensions, Image, TouchableHighlight } from 'react-native'
 import { Video, ResizeMode } from 'expo-av';
 import Colors from '../../Utils/Colors';
 import { Ionicons } from '@expo/vector-icons';
 
-export default function PlayVideoListItem({video,activeIndex,index}) {
+export default function PlayVideoListItem({video,activeIndex,index,userLikeHandler,user}) {
     const videoRef = useRef(null);
     const [status, setStatus] = useState({});
+    const checkIsUserAlreadyLike=()=>{
+        const result = video.VideoLikes?.find(item=>item.userEmail==user.primaryEmailAddress.emailAddress)
+        //console.log(result)
+        return result;
+    }
+
   return (
     <View>
         
@@ -35,7 +41,18 @@ export default function PlayVideoListItem({video,activeIndex,index}) {
                 }}>{video.description}</Text>
             </View>
             <View style={{display:'flex',gap:20}}>
-                <Ionicons name="heart-outline" size={45} color="white" />
+                <>
+                {checkIsUserAlreadyLike()? <TouchableHighlight onPress={()=>userLikeHandler(video,true)}>
+                    <Ionicons name="heart" size={45} color="white" />
+                </TouchableHighlight>
+                :
+                <TouchableHighlight onPress={()=>userLikeHandler(video,false)}>
+                    <Ionicons name="heart-outline" size={45} color="white" />
+                </TouchableHighlight>}
+                <Text style={{color:Colors.WHITE,textAlign:'center',marginTop:-15}}>
+                    {video?.VideoLikes?.length}
+                </Text>
+                </>
                 <Ionicons name="chatbubble-outline" size={40} color="white" />
                 <Ionicons name="share-social-outline" size={40} color="white" />
             </View>

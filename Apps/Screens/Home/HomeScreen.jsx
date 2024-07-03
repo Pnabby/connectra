@@ -35,7 +35,7 @@ export default function HomeScreen(){
         setLoading(true);
         const {data,error} = await supabase
         .from('PostList')
-        .select('*,Users(username,name,profileImage)')
+        .select('*,Users(username,name,profileImage),VideoLikes(postIdRef,userEmail)')
         .range(loadCount,loadCount+7)
         .order('id',{ascending:false})
 

@@ -32,7 +32,7 @@ export default function VideoThumbnailItem({video}) {
             <View style={{display:'flex',flexDirection:'row',alignItems:'center',gap:3}}>
               <Text style={{fontFamily:'outfit',
                 fontSize:12,color:Colors.WHITE
-              }}>36</Text>
+              }}>{video?.VideoLikes?.length}</Text>
               <Ionicons name="heart-outline" size={24} color="white" />
             </View>
         </View>

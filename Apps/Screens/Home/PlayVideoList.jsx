@@ -6,6 +6,7 @@ import { TouchableOpacity } from 'react-native-gesture-handler';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../Utils/SupabaseConfig';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
+import { useUser } from '@clerk/clerk-expo';
 
 export default function PlayVideoList() {
   const params = useRoute().params;
@@ -13,6 +14,7 @@ export default function PlayVideoList() {
   const navigation = useNavigation();
   const [loading, setLoading] = useState(false);
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
+  const {user}=useUser();
   const WindowHeight = Dimensions.get('window').height;
   const BottomTabHeight = useBottomTabBarHeight();
 
@@ -25,7 +27,7 @@ export default function PlayVideoList() {
     setLoading(true);
     const { data, error } = await supabase
       .from('PostList')
-      .select('*,Users(username,name,profileImage)')
+      .select('*,Users(username,name,profileImage),VideoLikes(postIdRef,userEmail)')
       .range(0, 7)
       .order('id', { ascending: false });
     
@@ -40,6 +42,26 @@ export default function PlayVideoList() {
     setLoading(false);
   }
 
+  const userLikeHandler=async(videoPost,isLike)=>{
+    if(!isLike){
+      const {data,error}= await supabase
+      .from('VideoLikes')
+      .insert([{
+        postIdRef:videoPost.id,
+        userEmail:user.primaryEmailAddress.emailAddress
+      }])
+      .select();
+      GetLatestVideoList();
+    }else{ 
+      const { error } = await supabase
+      .from('VideoLikes')
+      .delete()
+      .eq('postIdRef', videoPost.id)
+      .eq('userEmail',user?.primaryEmailAddress?.emailAddress)
+      GetLatestVideoList();
+              
+    }
+  }
   return (
     <View>
       <TouchableOpacity style={{ position: 'absolute', zIndex: 10, padding: 20, marginTop: 30 }}
@@ -61,6 +83,8 @@ export default function PlayVideoList() {
             key={item.id}
             index={index}
             activeIndex={currentVideoIndex}
+            userLikeHandler={userLikeHandler}
+            user={user}
           />
         )}
         keyExtractor={(item, index) => item.id.toString()}  // Ensure unique keys
