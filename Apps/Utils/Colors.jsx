@@ -1,5 +1,6 @@
 export default{
     BACKGROUND_TRANSPARENT:'#0000005c',
     WHITE:'#ffffff',
-    BLACK:'#000'
+    BLACK:'#000',
+    BLUE: '#1e90ff'
 }
