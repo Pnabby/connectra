@@ -9,6 +9,8 @@ import { Ionicons } from '@expo/vector-icons';
 import Colors from "../Utils/Colors";
 import AddScreenNavigation from "./AddScreenNavigation";
 import HomeScreenStackNavigation from './HomeScreenStackNavigation';
+import ChatScreen from '../Screens/Chat/ChatScreen';
+import ProfileScreenStackNavigation from './ProfileScreenStackNavigation';
 
 const Tab=createBottomTabNavigator();
 export default function TabNavigation (){
@@ -45,7 +47,16 @@ export default function TabNavigation (){
                             )
                         }}
             />
-            <Tab.Screen name='Profile' component={ProfileScreen}
+            <Tab.Screen name='Chat' component={ChatScreen}
+                        options={{
+                            headerShown:false,
+                            tabBarIcon:({color,size})=>(
+                                <Ionicons name="chatbubbles" size={size} color={color}/>
+
+                            )
+                        }}
+            />
+            <Tab.Screen name='Profile' component={ProfileScreenStackNavigation}
                         options={{
                             tabBarIcon:({color,size})=>(
                                 <Ionicons name="people-circle-sharp" size={size} color={color}/>

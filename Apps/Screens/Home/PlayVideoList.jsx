@@ -37,7 +37,7 @@ export default function PlayVideoList({navigation}) {
     }
 
     const result = data.filter(item => item.id !== params.selectedVideo.id);
-    setVideoList(videoList => [...videoList, ...result]);
+    setVideoList(result);
     setLoading(false);
   }
 

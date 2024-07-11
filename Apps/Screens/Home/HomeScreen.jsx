@@ -1,5 +1,5 @@
 import React, {useEffect, useState} from 'react';
-import {FlatList, Image, Text, View} from 'react-native';
+import {FlatList, Image, Text, View, ScrollView} from 'react-native';
 import {useUser} from "@clerk/clerk-expo";
 import {supabase} from "../../Utils/SupabaseConfig";
 import VideoThumbnailItem from './VideoThumbnailItem';
@@ -39,7 +39,7 @@ export default function HomeScreen(){
         .range(loadCount,loadCount+7)
         .order('id',{ascending:false})
 
-        setVideoList(videoList=>[...videoList,...data]);
+        setVideoList(data);
         //console.log(data);
         if (data){
             setLoading(false);
@@ -47,7 +47,7 @@ export default function HomeScreen(){
         
     }
     return (
-        <View style={{padding:20,paddingTop:25}}>
+        <ScrollView style={{padding:20,paddingTop:25}}>
             <View style={{display:'flex',flexDirection:'row',
                 justifyContent:'space-between',alignItems:'center'}}>
                 <Text 
@@ -58,7 +58,7 @@ export default function HomeScreen(){
                 style={{width:50,height:50,borderRadius:99}}
                 />
             </View>
-            <View>
+            <View style={{paddingBottom:30}}>
                 <FlatList
                     data={videoList}
                     numColumns={2}
@@ -71,7 +71,7 @@ export default function HomeScreen(){
                     )}
                 />
             </View>
-        </View>
+        </ScrollView>
     )
 }
 

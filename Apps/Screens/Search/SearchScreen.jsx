@@ -1,14 +1,19 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, TextInput, Button, FlatList, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import Colors from '../../Utils/Colors';
 import { supabase } from '../../Utils/SupabaseConfig'; // Ensure this import points to your actual Supabase config file
+import VideoThumbnailItem from '../Home/VideoThumbnailItem';
 
 const SearchScreen = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [results, setResults] = useState([]); // State to store search results
   const navigation = useNavigation();
+  const [videoList,setVideoList]= useState([]);
+  useEffect(()=>{
+    handleSearch()
+  },[searchQuery])
 
   const handleSearch = async () => {
     if (!searchQuery.trim()) return; // Avoid empty search
@@ -16,13 +21,14 @@ const SearchScreen = () => {
     try {
       const { data, error } = await supabase
         .from('PostList')
-        .select('id, thumbnail, description, emailRef, Users:emailRef!inner(username)') // Select necessary fields
+        .select('*, Users:emailRef!inner(username, name, profileImage),VideoLikes(postIdRef,userEmail)') // Select necessary fields
         .or(`description.ilike.%${searchQuery}%, emailRef.ilike.%${searchQuery}%`); // Query based on description or email
 
       if (error) {
         console.error('Search error:', error.message);
       } else {
         setResults(data);
+        setVideoList(data);
       }
     } catch (error) {
       console.error('Search error:', error);
@@ -52,18 +58,19 @@ const SearchScreen = () => {
       {/* Display search results */}
       <FlatList
         style={{zIndex: -1,marginTop:20}}
-        data={results}
+        data={videoList}
         keyExtractor={(item) => item.id.toString()} // Ensure unique keys
         numColumns={2} // Display 2 items per row
         columnWrapperStyle={styles.row}
         renderItem={({ item }) => (
-          <TouchableOpacity style={styles.resultItem} onPress={() => navigation.navigate('VideoDetail', { videoId: item.id })}>
-            <Image source={{ uri: item.thumbnail }} style={styles.thumbnail} />
-            <View style={styles.resultTextContainer}>
-              <Text style={styles.resultDescription} numberOfLines={1}>{truncateText(item.description,15)}</Text>
-              <Text style={styles.resultEmail} numberOfLines={1}>{truncateText(item.Users.username,15)}</Text>
-            </View>
-          </TouchableOpacity>
+          <VideoThumbnailItem video={item} />
+          // <TouchableOpacity style={styles.resultItem} onPress={() => navigation.navigate('VideoDetail', { videoId: item.id })}>
+          //   <Image source={{ uri: item.thumbnail }} style={styles.thumbnail} />
+          //   <View style={styles.resultTextContainer}>
+          //     <Text style={styles.resultDescription} numberOfLines={1}>{truncateText(item.description,15)}</Text>
+          //     <Text style={styles.resultEmail} numberOfLines={1}>{truncateText(item.Users.username,15)}</Text>
+          //   </View>
+          // </TouchableOpacity>
         )}
       />
     </View>
