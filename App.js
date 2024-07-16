@@ -2,7 +2,7 @@ import { StatusBar } from "expo-status-bar";
 import { StyleSheet, Text, View } from 'react-native';
 import { useFonts } from 'expo-font';
 import LoginScreen from "./Apps/Screens/LoginScreen/LoginScreen";
-import { ClerkProvider, SignedIn, SignedOut } from "@clerk/clerk-expo";
+import { ClerkProvider, SignedIn, SignedOut, useUser } from "@clerk/clerk-expo";
 import HomeScreen from "./Apps/Screens/Home/HomeScreen";
 import {NavigationContainer} from "@react-navigation/native";
 import TabNavigation from "./Apps/Navigation/TabNavigaton";

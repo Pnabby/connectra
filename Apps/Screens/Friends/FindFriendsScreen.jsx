@@ -14,29 +14,48 @@ export default function FindFriendsScreen() {
     if (!searchQuery.trim()) return; // Avoid empty search
 
     try {
+      // Fetch friends where the current user is the sender
+      const { data: friendsAsSender, error: errorAsSender } = await supabase
+      .from('Friendship')
+      .select('Receiver')
+      .eq('Sender', user.primaryEmailAddress.emailAddress)
+      .eq('status', 'accepted');
+
+      //console.log(friendsAsSender)
+      
+      if (errorAsSender) {
+      console.error("Error fetching friends as sender:", errorAsSender);
+      return;
+      }
+
+      // Fetch friends where the current user is the receiver
+      const { data: friendsAsReceiver, error: errorAsReceiver } = await supabase
+      .from('Friendship')
+      .select('Sender')
+      .eq('Receiver', user.primaryEmailAddress.emailAddress)
+      .eq('status', 'accepted');
+      console.log(friendsAsReceiver)
+      if (errorAsReceiver) {
+      console.error("Error fetching friends as receiver:", errorAsReceiver);
+      return;
+      }
+      const friendsEmails = [
+      ...friendsAsSender.map(friend => friend.Receiver),
+      ...friendsAsReceiver.map(friend => friend.Sender),
+      ];
+        //console.log("friends email: ", friendsEmails )
+      // Fetch non-friend users
       const { data, error } = await supabase
-        .from('Users')
-        .select('username, profileImage')
-        .ilike('username', `%${searchQuery}%`)
-        .not('email', 'in', [
-          supabase
-            .from('Friendship')
-            .select('sender')
-            .eq('receiver', user.email)
-            .eq('status', 'accepted'),
-          supabase
-            .from('Friendship')
-            .select('receiver')
-            .eq('sender', user.email)
-            .eq('status', 'accepted')
-        ])
-        .neq('email', user.email);
+      .from('Users')
+      .select('username, profileImage')
+      .ilike('username', `%${searchQuery}%`)
+      .not('email', 'eq', friendsEmails)
+      .neq('email', user.primaryEmailAddress.emailAddress);
 
       if (error) {
-        console.error('Error fetching non-friends:', error.message);
+      console.error("Error fetching non-friends:", error);
       } else {
-        setResults(data);
-        console.log(data);
+      //console.log("Non-friend users:", data);
       }
     } catch (error) {
       console.error('Error fetching non-friends:', error.message);
