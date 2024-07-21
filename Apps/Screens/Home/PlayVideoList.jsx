@@ -79,33 +79,33 @@ export default function PlayVideoList({navigation}) {
   }
 
   return (
-    <View>
-      <TouchableOpacity style={{ position: 'absolute', zIndex: 10, padding: 20, marginTop: 30 }}
-        onPress={() => navigation.goBack()}
-      >
-        <Ionicons name="arrow-back" size={24} color="black" />
-      </TouchableOpacity>
-      <FlatList
-        data={VideoList}
-        style={{ zIndex: -1 }}
-        pagingEnabled
-        onScroll={e => {
-          const index = Math.round(e.nativeEvent.contentOffset.y / (WindowHeight - BottomTabHeight));
-          setCurrentVideoIndex(index);
-        }}
-        renderItem={({ item, index }) => (
-          <PlayVideoListItem
-            video={item}
-            key={item.id}
-            index={index}
-            activeIndex={currentVideoIndex}
-            userLikeHandler={userLikeHandler}
-            user={user}
-            getLikesCount={getLikesCount}  // Pass the function as a prop
+      <View>
+        <TouchableOpacity style={{ position: 'absolute', padding: 20, marginTop: 30 }}
+                          onPress={() => navigation.goBack()}
+        >
+          <Ionicons name="arrow-back" size={24} color="black" />
+        </TouchableOpacity>
+        <View style={{ zIndex: 1 }}>
+          <FlatList
+              data={VideoList}
+              pagingEnabled
+              onScroll={e => {
+                const index = Math.round(e.nativeEvent.contentOffset.y / (WindowHeight - BottomTabHeight));
+                setCurrentVideoIndex(index);
+              }}
+              renderItem={({ item, index }) => (
+                  <PlayVideoListItem
+                      video={item}
+                      key={item.id}
+                      index={index}
+                      activeIndex={currentVideoIndex}
+                      userLikeHandler={userLikeHandler}
+                      user={user}
+                      getLikesCount={getLikesCount}
+                  />
+              )}
+              keyExtractor={(item, index) => item.id.toString()}
           />
-        )}
-        keyExtractor={(item, index) => item.id.toString()}  // Ensure unique keys
-      />
-    </View>
-  );
-}
+        </View>
+      </View>
+  )};

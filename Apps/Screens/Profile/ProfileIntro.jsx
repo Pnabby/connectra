@@ -68,6 +68,10 @@ export default function ProfileIntro() {
     
     return (
         <ScrollView style={{ marginTop:30,}}>
+            <View style={{
+                flexDirection:'row',
+                justifyContent:'space-between'
+            }}>
             <Text
                 style={{
                     fontFamily: 'outfit-bold',
@@ -76,6 +80,10 @@ export default function ProfileIntro() {
             >
                 Profile
             </Text>
+            <TouchableOpacity onPress={()=>navigation.navigate('time-control')}>
+                <Ionicons name="settings" size={24} color="black" />
+            </TouchableOpacity>
+            </View>
 
             <View style={{ alignItems: 'center', marginTop: 20 }}>
                 <Image
