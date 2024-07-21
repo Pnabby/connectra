@@ -1,106 +1,217 @@
-import React, { useState } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, Alert } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import { Ionicons } from '@expo/vector-icons';
-import Colors from '../../Utils/Colors';
-import MyFriendsScreen from './MyFriendsScreen';
-import FindFriendsScreen from './FindFriendsScreen';
+import React, { useEffect, useState } from 'react';
+import { View, Text, SectionList, ActivityIndicator, StyleSheet, TouchableOpacity, Image } from 'react-native';
+import { supabase } from '../../Utils/SupabaseConfig';
+import { AntDesign, Ionicons } from '@expo/vector-icons';
+import { useUser } from '@clerk/clerk-expo';
 
-const FriendScreen = () => {
-  const navigation = useNavigation();
-  const [isSelected,setIsSelected]= useState(true)
+export default function FriendScreen({navigation}) {
+  const [sections, setSections] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [pendingRequests, setPendingRequests] = useState(new Set()); // To track pending requests
+  const { user } = useUser();
+
+  useEffect(() => {
+    const fetchFriends = async () => {
+      try {
+        const userEmail = user.primaryEmailAddress.emailAddress;
+        const { data, error } = await supabase.rpc('get_all_friends_with_status', { user_email: userEmail });
+        
+        if (error) {
+          throw error;
+        }
+
+        const groupedData = data.reduce((acc, item) => {
+          const section = item.status === 'accepted' ? 'Friends' : 'Not Friends';
+          if (!acc[section]) {
+            acc[section] = [];
+          }
+          acc[section].push(item);
+          return acc;
+        }, {});
+
+        const sectionsArray = Object.keys(groupedData).map(key => ({
+          title: key,
+          data: groupedData[key],
+        }));
+
+        setSections(sectionsArray);
+
+        // Initialize pending requests state
+        const pending = new Set(data.filter(item => item.status === 'pending').map(item => item.email));
+        setPendingRequests(pending);
+      } catch (error) {
+        setError(error.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchFriends();
+  }, [user]);
+
+  const handleAddOrCancelFriend = async (email, status) => {
+    try {
+      const userEmail = user.primaryEmailAddress.emailAddress;
+
+      if (status === 'pending') {
+        // Cancel the friend request
+        const { error } = await supabase
+          .from('Friendship')
+          .delete()
+          .match({ Sender: userEmail, Receiver: email, status: 'pending' });
+
+        if (error) {
+          throw error;
+        }
+
+        // Update state
+        setPendingRequests(prev => {
+          const newPendingRequests = new Set(prev);
+          newPendingRequests.delete(email);
+          return newPendingRequests;
+        });
+
+        alert(`Friend request to ${email} canceled`);
+      } else {
+        // Send a new friend request
+        const { error } = await supabase
+          .from('Friendship')
+          .insert([{ Sender: userEmail, Receiver: email, status: 'pending' }]);
+
+        if (error) {
+          throw error;
+        }
+
+        // Update state
+        setPendingRequests(prev => new Set(prev).add(email));
+
+        alert(`Friend request sent to ${email}`);
+      }
+    } catch (error) {
+      console.error('Error handling friend request:', error.message);
+    }
+  };
+
+  if (loading) {
+    return (
+      <View style={styles.container}>
+        <ActivityIndicator size="large" color="#0000ff" />
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={styles.container}>
+        <Text>Error: {error}</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headstyle}>Friends</Text>
-      </View>
-      <View style={{flexDirection:'row',alignContent:'flex-end',justifyContent:'space-around',alignItems:'baseline'}}>
-        <TouchableOpacity onPress={
-            ()=>setIsSelected(true)
-            }>
-            <Text style={{
-                color: isSelected?Colors.BLUE:Colors.BLACK,
-                fontSize: isSelected?20:18,
-                fontFamily: isSelected?'outfit-bold':'outfit'
-            }}>My Friends</Text>
+      <TouchableOpacity style={{ position: 'absolute', padding: 20, marginTop: 7 }}
+                          onPress={() => navigation.goBack()}
+        >
+          <Ionicons name="arrow-back" size={30} color="black" />
         </TouchableOpacity>
-        <TouchableOpacity onPress={
-            ()=>setIsSelected(false)
-            }>
-            <Text style={{
-                color: !isSelected?Colors.BLUE:Colors.BLACK,
-                fontSize: !isSelected?20:18,
-                fontFamily: !isSelected?'outfit-bold':'outfit'
-            }}>Find Friends</Text>
-        </TouchableOpacity>
-      </View>
-      <TouchableOpacity onPress={()=>navigation.goBack()} style={{
-        position:'absolute',
-        marginTop:40,
-        marginLeft:10
-      }}>
-        <Ionicons name="arrow-back-outline" size={30} color="black" />
-      </TouchableOpacity>
-      {isSelected?<MyFriendsScreen/>:<FindFriendsScreen/>}
+      <View style={{alignItems:'center',padding:5}}>
+         <Text style={{
+          fontFamily:'outfit-bold',
+          fontSize:25
+         }}
+         >Friends</Text>
+         </View>
+      <SectionList
+        sections={sections}
+        keyExtractor={(item, index) => item.email + index}
+        renderItem={({ item, section }) => (
+          <View style={styles.friendItem}>
+            <View>
+              <Image 
+                source={{ uri: item.profileimage }} 
+                style={styles.profileImage} 
+                onError={(e) => console.error('Error loading image', e.nativeEvent.error)}
+              />
+            </View>
+            <View>
+              <Text style={styles.name}>{item.name}</Text>
+              <Text style={styles.username}>{item.username}</Text>
+              {/* <Text style={styles.status}>Status: {item.status}</Text> */}
+            </View>
+            {section.title === 'Not Friends' && (
+              <TouchableOpacity
+                style={styles.button}
+                onPress={() => handleAddOrCancelFriend(item.email, pendingRequests.has(item.email) ? 'pending' : 'not_friend')}
+              >
+                <AntDesign name={pendingRequests.has(item.email) ? 'close' : 'adduser'} size={24} color="blue" />
+                <Text style={styles.buttonText}>
+                  {pendingRequests.has(item.email) ? 'Cancel' : 'Add'}
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
+        renderSectionHeader={({ section: { title } }) => (
+          <View style={styles.header}>
+            <Text style={styles.headerText}>{title}</Text>
+          </View>
+        )}
+      />
     </View>
   );
-};
+}
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 20,
-    backgroundColor: 'white',
+    backgroundColor: '#fff',
   },
-  header: {
-    marginTop: 20,
-    marginBottom:20,
-    alignItems: 'center',
+  friendItem: {
+    padding: 10,
+    //borderBottomWidth: 1,
+    borderBottomColor: '#ddd',
     flexDirection: 'row',
-    justifyContent: 'center',
+    gap:15
+    //justifyContent: 'space-between',
   },
-  headstyle: {
-    fontSize: 25,
-    fontFamily: 'outfit-bold',
-  },
-  listContainer: {
-    paddingTop: 20,
-  },
-  requestItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: '#ccc',
-  },
-  requestInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  name: {
+    fontSize: 18,
+    fontWeight: 'bold',
   },
   username: {
-    fontSize: 18,
-    fontFamily: 'outfit',
+    fontSize: 16,
+    color: '#555',
   },
-  buttonContainer: {
+  status: {
+    fontSize: 14,
+    color: '#888',
+  },
+  header: {
+    padding: 10,
+    //backgroundColor: '#f0f0f0',
+    borderBottomWidth: 1,
+    borderBottomColor: '#ddd',
+  },
+  headerText: {
+    fontSize: 22,
+    fontFamily:'outfit-bold'
+  },
+  button: {
+    padding: 10,
+    alignItems: 'center',
     flexDirection: 'row',
   },
-  acceptButton: {
-    backgroundColor: 'green',
-    padding: 10,
-    borderRadius: 5,
-    marginRight: 10,
-  },
-  declineButton: {
-    backgroundColor: 'red',
-    padding: 10,
-    borderRadius: 5,
-  },
   buttonText: {
-    color: 'white',
-    fontFamily: 'outfit-bold',
+    fontWeight: 'bold',
+    marginLeft: 5,
+  },
+  profileImage: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: '#ddd', // Placeholder background color
   },
 });
-
-export default FriendScreen;

@@ -1,5 +1,5 @@
-import React, { useRef, useState, useEffect } from 'eact';
-import { Text, View, StyleSheet, Dimensions, Image, TouchableHighlight, Modal, FlatList, TextInput, KeyboardAvoidingView, Platform } from 'eact-native';
+import React, { useRef, useState, useEffect } from 'react';
+import { Text, View, StyleSheet, Dimensions, Image, TouchableHighlight, Modal, FlatList, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
 import { Video, ResizeMode } from 'expo-av';
 import Colors from '../../Utils/Colors';
 import { Ionicons } from '@expo/vector-icons';
@@ -175,10 +175,11 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   actions: {
-    flexDirection: 'row',
+    flexDirection: 'column',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginTop: 20,
+    gap:10
   },
   likeCount: {
     fontSize: 18,
