@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, ActivityIndicator, StyleSheet, TouchableOpacity, TextInput, Image } from 'react-native';
+import { View, Text, FlatList, ActivityIndicator, StyleSheet, TouchableOpacity, TextInput, Image, RefreshControl } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { supabase } from '../../Utils/SupabaseConfig'; // Adjust path as necessary
 import { useUser } from '@clerk/clerk-expo';
@@ -9,32 +9,36 @@ export default function ChatScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [friends, setFriends] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
   const { user } = useUser(); // Get current user's email
   const navigation = useNavigation();
 
   const handleSearch = async () => {
     if (!searchQuery.trim()) return;
-  }
+    // You can implement search functionality here if needed
+  };
+
+  const fetchFriends = async () => {
+    try {
+      setLoading(true);
+      const userEmail = user.primaryEmailAddress.emailAddress;
+      const { data, error } = await supabase.rpc('get_all_friends', { user_email: userEmail });
+      
+      if (error) {
+        throw error;
+      }
+
+      setFriends(data);
+    } catch (error) {
+      setError(error.message);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchFriends = async () => {
-      try {
-        const userEmail = user.primaryEmailAddress.emailAddress;
-        const { data, error } = await supabase.rpc('get_all_friends', { user_email: userEmail });
-        
-        if (error) {
-          throw error;
-        }
-
-        setFriends(data);
-      } catch (error) {
-        setError(error.message);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchFriends();
   }, [user]);
 
@@ -59,9 +63,9 @@ export default function ChatScreen() {
       name: friend.name,
       username: friend.username,
       email: friend.email,
-      profileImage: friend.profileimage
+      profileImage: friend.profileimage,
     });
-  }
+  };
 
   return (
     <View style={styles.container}>
@@ -93,6 +97,15 @@ export default function ChatScreen() {
             </View>
           </TouchableOpacity>
         )}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => {
+              setRefreshing(true);
+              fetchFriends();
+            }}
+          />
+        }
       />
     </View>
   );
