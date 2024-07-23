@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from 'eact';
+import React, { useRef, useState, useEffect } from 'react';
 import { Text, View, StyleSheet, Dimensions, Image, TouchableHighlight, Modal, FlatList, TextInput, KeyboardAvoidingView, Platform } from 'eact-native';
 import { Video, ResizeMode } from 'expo-av';
 import Colors from '../../Utils/Colors';
