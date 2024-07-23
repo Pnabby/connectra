@@ -78,7 +78,7 @@ export default function HomeScreen() {
   
       // Handle the case where there's no data without logging an error
       if (!data) {
-        console.log('No time limit data found for the user.');
+        //console.log('No time limit data found for the user.');
         return;
       }
   

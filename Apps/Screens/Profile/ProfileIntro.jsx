@@ -9,30 +9,32 @@ import { FontAwesome5 } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 
 export default function ProfileIntro() {
-    const navigation=useNavigation();
+    const navigation = useNavigation();
     const { user } = useUser();
-    const [postCount,setpostCount]=useState(0);
-    const [likesCount,setlikesCount]=useState(0);
-    const [videoList,setVideoList]= useState([]);
+    const [postCount, setPostCount] = useState(0);
+    const [likesCount, setLikesCount] = useState(0);
+    const [friendsCount, setFriendsCount] = useState(0); // State for friends count
+    const [videoList, setVideoList] = useState([]);
 
     const getPostCount = async () => {
         const { data, error } = await supabase
-          .from('PostList')
-          .select('*', { count: 'exact' })
-          .eq('emailRef', user?.primaryEmailAddress.emailAddress);
-    
+            .from('PostList')
+            .select('*', { count: 'exact' })
+            .eq('emailRef', user?.primaryEmailAddress.emailAddress);
+
         if (error) {
-          console.error('Error fetching likes count:', error);
-          return 0;
+            console.error('Error fetching likes count:', error);
+            return 0;
         }
 
-        data.length&&setpostCount(data.length)
-    }
+        data.length && setPostCount(data.length);
+    };
+
     const getLikesCount = async () => {
-        const { data, error, count } = await supabase
-        .from('PostList')
-        .select('id', { count: 'exact' },'VideoLikes:postIdRef!inner(userEmail)') // Select a column to enable counting
-        .eq('emailRef', user?.primaryEmailAddress.emailAddress);
+        const { data, error } = await supabase
+            .from('PostList')
+            .select('id', { count: 'exact' }, 'VideoLikes:postIdRef!inner(userEmail)') // Select a column to enable counting
+            .eq('emailRef', user?.primaryEmailAddress.emailAddress);
         //.innerJoin('VideoLikes', 'PostList.id', 'VideoLikes.postIdRef');
 
         if (error) {
@@ -40,49 +42,60 @@ export default function ProfileIntro() {
         }
 
         //console.log('Count:', count);
-        data.length&&setlikesCount(data.length)
+        data.length && setLikesCount(data.length);
+    };
 
-    }
-    const getVideoList = async()=>{
+    const getFriendsCount = async () => {
+        const { data, error } = await supabase.rpc('get_friends_count', { user_email: user?.primaryEmailAddress.emailAddress });
+
+        if (error) {
+            console.error('Error fetching friends count:', error);
+        } else {
+            setFriendsCount(data);
+        }
+    };
+
+    const getVideoList = async () => {
         try {
             const { data, error } = await supabase
-              .from('PostList')
-              .select('*, Users:emailRef!inner(username, name, profileImage),VideoLikes(postIdRef,userEmail)') // Select necessary fields
-              .eq('emailRef',user?.primaryEmailAddress.emailAddress)
-      
-            if (error) {
-              console.error('Search error:', error.message);
-            } else {
-              setVideoList(data);
-            }
-          } catch (error) {
-            console.error('Search error:', error);
-          }
-    }
+                .from('PostList')
+                .select('*, Users:emailRef!inner(username, name, profileImage),VideoLikes(postIdRef,userEmail)') // Select necessary fields
+                .eq('emailRef', user?.primaryEmailAddress.emailAddress);
 
-    useEffect(()=>{
-        getPostCount()
-        getLikesCount()
-        getVideoList()
-    }, [])
-    
+            if (error) {
+                console.error('Search error:', error.message);
+            } else {
+                setVideoList(data);
+            }
+        } catch (error) {
+            console.error('Search error:', error);
+        }
+    };
+
+    useEffect(() => {
+        getPostCount();
+        getLikesCount();
+        getFriendsCount(); // Fetch friends count
+        getVideoList();
+    }, []);
+
     return (
-        <ScrollView style={{ marginTop:30,}}>
+        <ScrollView style={{ marginTop: 30 }}>
             <View style={{
-                flexDirection:'row',
-                justifyContent:'space-between'
+                flexDirection: 'row',
+                justifyContent: 'space-between'
             }}>
-            <Text
-                style={{
-                    fontFamily: 'outfit-bold',
-                    fontSize: 24,
-                }}
-            >
-                Profile
-            </Text>
-            <TouchableOpacity onPress={()=>navigation.navigate('time-control')}>
-                <Ionicons name="settings" size={24} color="black" />
-            </TouchableOpacity>
+                <Text
+                    style={{
+                        fontFamily: 'outfit-bold',
+                        fontSize: 24,
+                    }}
+                >
+                    Profile
+                </Text>
+                <TouchableOpacity onPress={() => navigation.navigate('time-control')}>
+                    <Ionicons name="settings" size={24} color="black" />
+                </TouchableOpacity>
             </View>
 
             <View style={{ alignItems: 'center', marginTop: 20 }}>
@@ -118,11 +131,11 @@ export default function ProfileIntro() {
                     marginTop: 20,
                     display: 'flex',
                     flexDirection: 'row',
-                    justifyContent:'space-between'
+                    justifyContent: 'space-between'
                 }}
             >
-                <TouchableOpacity style={{ padding: 20, justifyContent:'center', alignItems:'center' }}
-                    onPress={()=>navigation.navigate('friends')}
+                <TouchableOpacity style={{ padding: 20, justifyContent: 'center', alignItems: 'center' }}
+                    onPress={() => navigation.navigate('friends')}
                 >
                     <FontAwesome5 name="user-friends" size={24} color="black" />
                     <Text
@@ -130,20 +143,22 @@ export default function ProfileIntro() {
                             fontFamily: 'outfit-bold',
                             fontSize: 15,
                         }}
-                    >20 Friends
+                    >
+                        {friendsCount} Friends
                     </Text>
                 </TouchableOpacity>
-                <View style={{ padding: 20, justifyContent:'center',alignItems:'center' }}>
+                <View style={{ padding: 20, justifyContent: 'center', alignItems: 'center' }}>
                     <Ionicons name="videocam-outline" size={24} color="black" />
                     <Text
                         style={{
                             fontFamily: 'outfit-bold',
                             fontSize: 15,
                         }}
-                    >{postCount} posts
+                    >
+                        {postCount} posts
                     </Text>
                 </View>
-                <View style={{ padding: 20, justifyContent:'center',alignItems:'center' }}>
+                <View style={{ padding: 20, justifyContent: 'center', alignItems: 'center' }}>
                     <Ionicons name="heart" size={24} color="black" />
                     <Text
                         style={{
@@ -156,16 +171,17 @@ export default function ProfileIntro() {
                 </View>
             </View>
             <FlatList
-                style={{zIndex: -1,marginTop:20}}
+                style={{ zIndex: -1, marginTop: 20 }}
                 data={videoList}
                 keyExtractor={(item) => item.id.toString()} // Ensure unique keys
                 numColumns={2} // Display 2 items per row
                 columnWrapperStyle={styles.row}
                 renderItem={({ item }) => (
-                <VideoThumbnailItem video={item} />
+                    <VideoThumbnailItem video={item} />
                 )}
             />
         </ScrollView>
     );
 }
-const styles = StyleSheet.create({})
+
+const styles = StyleSheet.create({});

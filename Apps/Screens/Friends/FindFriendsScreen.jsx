@@ -12,55 +12,67 @@ export default function FindFriendsScreen() {
 
   const searchFriend = async () => {
     if (!searchQuery.trim()) return; // Avoid empty search
-
+  
+    // Check if the user object is defined and contains the necessary properties
+    if (!user || !user.primaryEmailAddress || !user.primaryEmailAddress.emailAddress) {
+      console.error("User or email address is undefined");
+      return;
+    }
+  
     try {
+      // Fetch all users matching the search query
+      const { data: allUsers, error: errorAllUsers } = await supabase
+        .from('Users')
+        .select('username, profileImage, email')
+        .ilike('username', `%${searchQuery}%`);
+  
+      if (errorAllUsers) {
+        console.error("Error fetching users:", errorAllUsers);
+        return;
+      }
+  
       // Fetch friends where the current user is the sender
       const { data: friendsAsSender, error: errorAsSender } = await supabase
-      .from('Friendship')
-      .select('Receiver')
-      .eq('Sender', user.primaryEmailAddress.emailAddress)
-      .eq('status', 'accepted');
-
-      //console.log(friendsAsSender)
-      
+        .from('Friendship')
+        .select('Receiver')
+        .eq('Sender', user.primaryEmailAddress.emailAddress)
+        .eq('status', 'accepted');
+  
       if (errorAsSender) {
-      console.error("Error fetching friends as sender:", errorAsSender);
-      return;
+        console.error("Error fetching friends as sender:", errorAsSender);
+        return;
       }
-
+  
       // Fetch friends where the current user is the receiver
       const { data: friendsAsReceiver, error: errorAsReceiver } = await supabase
-      .from('Friendship')
-      .select('Sender')
-      .eq('Receiver', user.primaryEmailAddress.emailAddress)
-      .eq('status', 'accepted');
-      console.log(friendsAsReceiver)
+        .from('Friendship')
+        .select('Sender')
+        .eq('Receiver', user.primaryEmailAddress.emailAddress)
+        .eq('status', 'accepted');
+  
       if (errorAsReceiver) {
-      console.error("Error fetching friends as receiver:", errorAsReceiver);
-      return;
+        console.error("Error fetching friends as receiver:", errorAsReceiver);
+        return;
       }
+  
       const friendsEmails = [
-      ...friendsAsSender.map(friend => friend.Receiver),
-      ...friendsAsReceiver.map(friend => friend.Sender),
+        ...friendsAsSender.map(friend => friend.Receiver),
+        ...friendsAsReceiver.map(friend => friend.Sender),
       ];
-        //console.log("friends email: ", friendsEmails )
-      // Fetch non-friend users
-      const { data, error } = await supabase
-      .from('Users')
-      .select('username, profileImage')
-      .ilike('username', `%${searchQuery}%`)
-      .not('email', 'eq', friendsEmails)
-      .neq('email', user.primaryEmailAddress.emailAddress);
-
-      if (error) {
-      console.error("Error fetching non-friends:", error);
-      } else {
-      //console.log("Non-friend users:", data);
-      }
+  
+      console.log("friends email: ", friendsEmails);
+  
+      // Filter out friends from the fetched users
+      const nonFriendUsers = allUsers.filter(
+        (u) => !friendsEmails.includes(u.email) && u.email !== user.primaryEmailAddress.emailAddress
+      );
+  
+      console.log("Non-friend users:", nonFriendUsers);
     } catch (error) {
       console.error('Error fetching non-friends:', error.message);
     }
   };
+  
 
   const renderItem = ({ item }) => (
     <View style={styles.resultItem}>
