@@ -1,22 +1,26 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, Image, TouchableOpacity, StyleSheet, TextInput, FlatList, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, Image, TouchableOpacity, StyleSheet, TextInput, FlatList, KeyboardAvoidingView, Platform, Alert } from 'react-native';
 import { useRoute } from '@react-navigation/native';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { supabase } from '../../Utils/SupabaseConfig';
 import { useUser } from '@clerk/clerk-expo';
+import { s3bucket } from '../../Utils/S3BucketConfig';
+import { Audio } from 'expo-av';
 
-export default function OpenChat() {
+export default function OpenChat({navigation}) {
   const route = useRoute();
   const { name, username, email, profileImage } = route.params;
   const [message, setMessage] = useState('');
   const [chatMessages, setChatMessages] = useState([]);
+  const [recording, setRecording] = useState(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const [sound, setSound] = useState(null);
   const { user } = useUser();
   const flatListRef = useRef(null); // Ref for FlatList
 
   const fetchMessages = async () => {
     try {
       const userEmail = user.primaryEmailAddress.emailAddress;
-      //console.log('Fetching messages for:', userEmail, 'and', email);
 
       const { data, error } = await supabase.rpc('get_chat_messages', {
         user1: userEmail,
@@ -26,9 +30,7 @@ export default function OpenChat() {
       if (error) {
         console.error('Error fetching messages:', error);
       } else {
-        //console.log('Fetched messages:', data);
         setChatMessages(data);
-        // Use requestAnimationFrame to ensure it happens after the FlatList has rendered
         requestAnimationFrame(() => flatListRef.current.scrollToEnd({ animated: false }));
       }
     } catch (error) {
@@ -48,7 +50,6 @@ export default function OpenChat() {
           (newMessage.sender === email && newMessage.receiver === user.primaryEmailAddress.emailAddress)
         ) {
           setChatMessages((prevMessages) => [...prevMessages, newMessage]);
-          // Use requestAnimationFrame to ensure it happens after the FlatList has rendered
           requestAnimationFrame(() => flatListRef.current.scrollToEnd({ animated: true }));
         }
       })
@@ -59,7 +60,7 @@ export default function OpenChat() {
     };
   }, [email]);
 
-  const handleSend = async () => {
+  const handleSendTextMessage = async () => {
     if (message) {
       const { data, error } = await supabase
         .from('Chat')
@@ -80,15 +81,121 @@ export default function OpenChat() {
     }
   };
 
+  const uploadVoiceNote = async (fileUri) => {
+    const fileType = 'audio/mpeg'; // Assuming the file type for voice notes
+    const fileName = `voice_notes/${Date.now()}.mp3`; // Generate a unique file name
+
+    const response = await fetch(fileUri);
+    const blob = await response.blob(); // Convert the file URI to blob
+
+    const params = {
+      Bucket: 'connectra',
+      Key: fileName,
+      Body: blob,
+      ACL: 'public-read',
+      ContentType: fileType,
+    };
+
+    return new Promise((resolve, reject) => {
+      s3bucket.upload(params, (err, data) => {
+        if (err) {
+          console.error('Error uploading voice note:', err);
+          reject(err);
+        } else {
+          console.log('Voice note uploaded:', data);
+          resolve(data.Location);
+        }
+      });
+    });
+  };
+
+  const handleSendVoiceNote = async (fileUri) => {
+    try {
+      const voiceNoteUrl = await uploadVoiceNote(fileUri);
+
+      const { data, error } = await supabase
+        .from('Chat')
+        .insert([
+          {
+            sender: user.primaryEmailAddress.emailAddress,
+            receiver: email,
+            message: voiceNoteUrl,
+            messageType: 'voice',
+          }
+        ]);
+
+      if (error) {
+        console.error('Error sending voice note:', error);
+      }
+    } catch (error) {
+      console.error('Error handling voice note:', error);
+    }
+  };
+
+  const startRecording = async () => {
+    try {
+      const { status } = await Audio.requestPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission to access microphone is required!');
+        return;
+      }
+
+      const recording = new Audio.Recording();
+      await recording.prepareToRecordAsync(Audio.RecordingOptionsPresets.HighQuality);
+      await recording.startAsync();
+      setRecording(recording);
+      setIsRecording(true);
+      console.log('Recording started');
+    } catch (error) {
+      console.error('Error starting recording:', error);
+    }
+  };
+
+  const stopRecording = async () => {
+    try {
+      if (recording) {
+        await recording.stopAndUnloadAsync();
+        const uri = recording.getURI();
+        setRecording(null);
+        setIsRecording(false);
+        console.log('Recording stopped and saved at', uri);
+        handleSendVoiceNote(uri);
+      }
+    } catch (error) {
+      console.error('Error stopping recording:', error);
+    }
+  };
+
+  const playSound = async (url) => {
+    try {
+      const { sound } = await Audio.Sound.createAsync({ uri: url });
+      setSound(sound);
+      await sound.playAsync();
+    } catch (error) {
+      console.error('Error playing sound:', error);
+    }
+  };
+
   const renderMessageItem = ({ item }) => (
     <View style={[styles.messageItem, item.sender === user.primaryEmailAddress.emailAddress ? styles.myMessage : styles.theirMessage]}>
-      <Text style={item.sender === user.primaryEmailAddress.emailAddress ? styles.myMessageText : styles.theirMessageText}>{item.message}</Text>
+      {item.messagetype === 'text' ? (
+        <Text style={item.sender === user.primaryEmailAddress.emailAddress ? styles.myMessageText : styles.theirMessageText}>{item.message}</Text>
+      ) : (
+        <TouchableOpacity onPress={() => playSound(item.message)}>
+          <Ionicons name="play-circle" size={24} color={item.sender === user.primaryEmailAddress.emailAddress ? 'white' : 'black'} />
+        </TouchableOpacity>
+      )}
     </View>
   );
 
   return (
     <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <View style={styles.header}>
+      <TouchableOpacity style={{ padding: 0, marginTop: 5, paddingRight:5 }}
+                          onPress={() => navigation.goBack()}
+        >
+          <Ionicons name="arrow-back" size={25} color="black" />
+        </TouchableOpacity>
         <Image source={{ uri: profileImage }} style={styles.profileImage} />
         <View style={styles.userInfo}>
           <Text style={styles.username}>{username}</Text>
@@ -117,10 +224,13 @@ export default function OpenChat() {
           value={message}
           onChangeText={setMessage}
         />
-        <TouchableOpacity style={styles.recordButton} onPress={() => console.log('Record button pressed')}>
-          <Ionicons name="mic" size={24} color="white" />
+        <TouchableOpacity
+          style={styles.recordButton}
+          onPress={isRecording ? stopRecording : startRecording}
+        >
+          <Ionicons name={isRecording ? 'stop-circle' : 'mic'} size={24} color="white" />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.sendButton} onPress={handleSend}>
+        <TouchableOpacity style={styles.sendButton} onPress={handleSendTextMessage}>
           <Ionicons name="send" size={24} color="white" />
         </TouchableOpacity>
       </View>

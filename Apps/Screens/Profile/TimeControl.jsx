@@ -3,8 +3,9 @@ import { View, Text, Image, StyleSheet, TouchableOpacity, Alert } from 'react-na
 import { Picker } from '@react-native-picker/picker';
 import { useUser } from '@clerk/clerk-expo';
 import { supabase } from '../../Utils/SupabaseConfig';
+import { Ionicons } from '@expo/vector-icons';
 
-export default function TimeControl() {
+export default function TimeControl({navigation}) {
   const [timeLimit, setTimeLimit] = useState(0); // initial time limit in minutes
   const [logoutDuration, setLogoutDuration] = useState(0); // initial logout duration in minutes
   const { user } = useUser();
@@ -37,6 +38,11 @@ export default function TimeControl() {
 
   return (
     <View>
+      <TouchableOpacity style={{ position: 'absolute', padding: 20, marginTop: 15 }}
+                          onPress={() => navigation.goBack()}
+        >
+          <Ionicons name="arrow-back" size={30} color="black" />
+        </TouchableOpacity>
       <View style={styles.headerContainer}>
         <Text style={styles.headerText}>Time Control</Text>
       </View>

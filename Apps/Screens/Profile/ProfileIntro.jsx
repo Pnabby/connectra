@@ -1,12 +1,15 @@
-import { View, Text, Image, FlatList, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import React, { useEffect, useState } from 'react';
+import { View, Text, Image, FlatList, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { useUser } from '@clerk/clerk-expo';
 import Colors from '../../Utils/Colors';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, FontAwesome5 } from '@expo/vector-icons';
 import { supabase } from '../../Utils/SupabaseConfig';
 import VideoThumbnailItem from '../Home/VideoThumbnailItem';
-import { FontAwesome5 } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import { RefreshControl } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
+import { s3bucket } from '../../Utils/S3BucketConfig'; // Import the S3 client
+import { LongPressGestureHandler } from 'react-native-gesture-handler';
 
 export default function ProfileIntro() {
     const navigation = useNavigation();
@@ -15,6 +18,57 @@ export default function ProfileIntro() {
     const [likesCount, setLikesCount] = useState(0);
     const [friendsCount, setFriendsCount] = useState(0); // State for friends count
     const [videoList, setVideoList] = useState([]);
+    const [refreshing, setRefreshing] = useState(false);
+    const [username, setUsername] = useState(''); // State for username
+    const [profileImage, setProfileImage] = useState(user?.imageUrl); // State for profile image
+
+    const fetchUserProfileImage = async () => {
+        try {
+          const { data, error } = await supabase
+            .from('Users')
+            .select('profileImage')
+            .eq('email', user.primaryEmailAddress.emailAddress)
+            .single();
+    
+          if (error) {
+            console.error('Error fetching profile image:', error);
+          } else {
+            setProfileImage(data.profileImage || ''); // Update state with the fetched profile image URL
+          }
+        } catch (error) {
+          console.error('Error fetching profile image:', error);
+        }
+      };
+
+    const onRefresh = async () => {
+        setRefreshing(true);
+        try {
+            await getPostCount();
+            await getLikesCount();
+            await getFriendsCount();
+            await getVideoList();
+            await fetchUserProfileImage();
+        } catch (error) {
+            console.error('Error refreshing data:', error);
+        }
+        setRefreshing(false);
+    };
+
+    const getUsername = async () => {
+        if (!user?.primaryEmailAddress.emailAddress) return;
+
+        const { data, error } = await supabase
+            .from('Users') // Adjust the table name if necessary
+            .select('username')
+            .eq('email', user.primaryEmailAddress.emailAddress)
+            .single();
+
+        if (error) {
+            console.error('Error fetching username:', error);
+        } else {
+            setUsername(data?.username || ''); // Set the username state
+        }
+    };
 
     const getPostCount = async () => {
         const { data, error } = await supabase
@@ -23,7 +77,7 @@ export default function ProfileIntro() {
             .eq('emailRef', user?.primaryEmailAddress.emailAddress);
 
         if (error) {
-            console.error('Error fetching likes count:', error);
+            console.error('Error fetching post count:', error);
             return 0;
         }
 
@@ -33,15 +87,13 @@ export default function ProfileIntro() {
     const getLikesCount = async () => {
         const { data, error } = await supabase
             .from('PostList')
-            .select('id', { count: 'exact' }, 'VideoLikes:postIdRef!inner(userEmail)') // Select a column to enable counting
+            .select('id', { count: 'exact' }, 'VideoLikes:postIdRef!inner(userEmail)')
             .eq('emailRef', user?.primaryEmailAddress.emailAddress);
-        //.innerJoin('VideoLikes', 'PostList.id', 'VideoLikes.postIdRef');
 
         if (error) {
             console.error('Count error:', error.message);
         }
 
-        //console.log('Count:', count);
         data.length && setLikesCount(data.length);
     };
 
@@ -59,7 +111,7 @@ export default function ProfileIntro() {
         try {
             const { data, error } = await supabase
                 .from('PostList')
-                .select('*, Users:emailRef!inner(username, name, profileImage),VideoLikes(postIdRef,userEmail)') // Select necessary fields
+                .select('*, Users:emailRef!inner(username, name, profileImage),VideoLikes(postIdRef,userEmail)')
                 .eq('emailRef', user?.primaryEmailAddress.emailAddress);
 
             if (error) {
@@ -73,18 +125,101 @@ export default function ProfileIntro() {
     };
 
     useEffect(() => {
+        getUsername(); // Fetch username when component mounts
         getPostCount();
         getLikesCount();
-        getFriendsCount(); // Fetch friends count
+        getFriendsCount();
+        fetchUserProfileImage();
         getVideoList();
     }, []);
 
+    const uploadToS3 = async (uri, fileName, contentType) => {
+        const file = await fetch(uri);
+        const blob = await file.blob();
+        
+        const params = {
+            Bucket: 'connectra', // Replace with your bucket name
+            Key: fileName,
+            Body: blob,
+            ContentType: contentType,
+        };
+
+        try {
+            await s3bucket.upload(params).promise();
+            console.log("uploaded")
+            return `https://connectra.s3.amazonaws.com/${fileName}`; // Construct URL for the uploaded file
+        } catch (error) {
+            console.error('Error uploading to S3:', error);
+            throw new Error('Failed to upload image');
+        }
+    };
+
+    const updateProfileImage = async (imageUrl) => {
+        const { error } = await supabase
+            .from('Users')
+            .update({ profileImage: imageUrl })
+            .eq('email', user.primaryEmailAddress.emailAddress);
+
+        if (error) {
+            Alert.alert('Error', 'Failed to update profile image');
+            console.error('Error updating profile image:', error);
+        }
+    };
+
+    const handleProfileImageChange = async () => {
+        Alert.alert('Change Profile Image', 'Would you like to change your profile image?', [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Choose from Gallery', onPress: async () => await pickImageFromGallery() },
+            { text: 'Take a Photo', onPress: async () => await takePhoto() },
+        ]);
+    };
+
+    const pickImageFromGallery = async () => {
+        let result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            allowsEditing: true,
+            aspect: [4, 3],
+            quality: 1,
+        });
+
+        if (!result.canceled) {
+            await handleImageUpload(result.assets[0]);
+        }
+    };
+
+    const takePhoto = async () => {
+        let result = await ImagePicker.launchCameraAsync({
+            allowsEditing: true,
+            aspect: [4, 3],
+            quality: 1,
+        });
+
+        if (!result.canceled) {
+            await handleImageUpload(result.assets[0]);
+        }
+    };
+
+    const handleImageUpload = async (asset) => {
+        const { uri, fileName, type } = asset;
+        const fileUrl = await uploadToS3(uri, `profile-images/${fileName}`, type);
+        await updateProfileImage(fileUrl);
+        setProfileImage(fileUrl);
+    };
+
     return (
-        <ScrollView style={{ marginTop: 30 }}>
+        <ScrollView style={{ marginTop: 20 }}
+            refreshControl={
+                <RefreshControl
+                    refreshing={refreshing}
+                    onRefresh={onRefresh}
+                />
+            }
+        >
             <View style={{
                 flexDirection: 'row',
                 justifyContent: 'space-between'
             }}>
+                <Text>       </Text>
                 <Text
                     style={{
                         fontFamily: 'outfit-bold',
@@ -93,27 +228,37 @@ export default function ProfileIntro() {
                 >
                     Profile
                 </Text>
-                <TouchableOpacity onPress={() => navigation.navigate('time-control')}>
+                <TouchableOpacity onPress={() => navigation.navigate('settings')}>
                     <Ionicons name="settings" size={24} color="black" />
                 </TouchableOpacity>
             </View>
 
             <View style={{ alignItems: 'center', marginTop: 20 }}>
-                <Image
-                    source={{ uri: user?.imageUrl }}
-                    style={{
-                        width: 70,
-                        height: 70,
-                        borderRadius: 99,
+                <LongPressGestureHandler
+                    onHandlerStateChange={({ nativeEvent }) => {
+                        if (nativeEvent.state === 4) { // State 4 is for long press
+                            handleProfileImageChange();
+                        }
                     }}
-                />
+                >
+                    <View>
+                        <Image
+                            source={{ uri: profileImage }}
+                            style={{
+                                width: 70,
+                                height: 70,
+                                borderRadius: 99,
+                            }}
+                        />
+                    </View>
+                </LongPressGestureHandler>
                 <Text
                     style={{
                         fontSize: 22,
                         fontFamily: 'outfit-medium',
                     }}
                 >
-                    {user?.fullName}
+                    {username}  {/* Display the fetched username */}
                 </Text>
                 <Text
                     style={{
@@ -184,4 +329,8 @@ export default function ProfileIntro() {
     );
 }
 
-const styles = StyleSheet.create({});
+const styles = StyleSheet.create({
+    row: {
+        justifyContent: 'space-between',
+    },
+});

@@ -1,9 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { FlatList, Image, Text, View, ScrollView, Alert } from 'react-native';
-import { useUser } from "@clerk/clerk-expo";
+import { useUser, useAuth } from "@clerk/clerk-expo";
 import { supabase } from "../../Utils/SupabaseConfig";
 import VideoThumbnailItem from './VideoThumbnailItem';
-import { useAuth } from '@clerk/clerk-expo';
 
 export default function HomeScreen() {
   const { user } = useUser();
@@ -11,11 +10,12 @@ export default function HomeScreen() {
   const [videoList, setVideoList] = useState([]);
   const [loading, setLoading] = useState(false);
   const [loadCount, setLoadCount] = useState(0);
+  const [profileImage, setProfileImage] = useState(''); // State for storing profile image URL
 
   useEffect(() => {
     if (user) {
-      updateProfileImage();
       setLoadCount(0);
+      fetchUserProfileImage(); // Fetch profile image when user is available
       GetLatestVideoList();
       checkTimeLimit();
     }
@@ -35,20 +35,30 @@ export default function HomeScreen() {
     return () => clearInterval(interval); // Cleanup interval on unmount
   }, [user]);
 
-  const updateProfileImage = async () => {
-    const { data, error } = await supabase
-      .from('Users')
-      .update({ 'profileImage': user?.imageUrl })
-      .eq('email', user?.primaryEmailAddress?.emailAddress)
-      .is('profileImage', null)
-      .select();
-  }
+  // Fetch profile image from Users table
+  const fetchUserProfileImage = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('Users')
+        .select('profileImage')
+        .eq('email', user.primaryEmailAddress.emailAddress)
+        .single();
+
+      if (error) {
+        console.error('Error fetching profile image:', error);
+      } else {
+        setProfileImage(data.profileImage || ''); // Update state with the fetched profile image URL
+      }
+    } catch (error) {
+      console.error('Error fetching profile image:', error);
+    }
+  };
 
   const GetLatestVideoList = async () => {
     setLoading(true);
     const { data, error } = await supabase
       .from('PostList')
-      .select('*,Users(username,name,profileImage),VideoLikes(postIdRef,userEmail)')
+      .select('*, Users(username,name,profileImage), VideoLikes(postIdRef,userEmail)')
       .range(loadCount, loadCount + 7)
       .order('id', { ascending: false });
 
@@ -56,17 +66,22 @@ export default function HomeScreen() {
     if (data) {
       setLoading(false);
     }
-  }
-  const delData = async()=>{
+  };
+
+  const delData = async () => {
     try {
       const { error } = await supabase
-      .from('UserTimeSettings')
-      .delete()
-      .eq('email', user.primaryEmailAddress.emailAddress)   
+        .from('UserTimeSettings')
+        .delete()
+        .eq('email', user.primaryEmailAddress.emailAddress);
+      
+      if (error) {
+        console.error('Error deleting user time settings:', error);
+      }
     } catch (error) {
-      console.log(error)
+      console.error('Error deleting user time settings:', error);
     }
-  }
+  };
 
   const checkTimeLimit = async () => {
     try {
@@ -76,9 +91,7 @@ export default function HomeScreen() {
         .eq('email', user.primaryEmailAddress.emailAddress)
         .single();
   
-      // Handle the case where there's no data without logging an error
       if (!data) {
-        //console.log('No time limit data found for the user.');
         return;
       }
   
@@ -102,11 +115,9 @@ export default function HomeScreen() {
         delData();
       }
     } catch (error) {
-      // Log a message or handle it in another way, but do not log an error
-      console.log('Error checking time limit:', error.message);
+      console.error('Error checking time limit:', error.message);
     }
   };
-  
 
   const handleLogout = async () => {
     try {
@@ -123,11 +134,9 @@ export default function HomeScreen() {
         display: 'flex', flexDirection: 'row',
         justifyContent: 'space-between', alignItems: 'center'
       }}>
-        <Text
-          style={{
-            fontSize: 30, fontFamily: 'outfit-bold'
-          }}>Connectra</Text>
-        <Image source={{ uri: user?.imageUrl }}
+        <Text style={{ fontSize: 30, fontFamily: 'outfit-bold' }}>Connectra</Text>
+        <Image 
+          source={{ uri: profileImage || 'default_image_url_here' }} // Use profile image URL from state
           style={{ width: 50, height: 50, borderRadius: 99 }}
         />
       </View>
@@ -139,7 +148,7 @@ export default function HomeScreen() {
           onRefresh={GetLatestVideoList}
           refreshing={loading}
           onEndReached={() => setLoadCount(loadCount + 7)}
-          renderItem={({ item, index }) => (
+          renderItem={({ item }) => (
             <VideoThumbnailItem video={item} />
           )}
         />
