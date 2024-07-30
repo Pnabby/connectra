@@ -59,7 +59,7 @@ export default function HomeScreen() {
     const { data, error } = await supabase
       .from('PostList')
       .select('*, Users(username,name,profileImage), VideoLikes(postIdRef,userEmail)')
-      .range(loadCount, loadCount + 7)
+      // .range(loadCount, loadCount + 7)
       .order('id', { ascending: false });
 
     setVideoList(data);
@@ -129,7 +129,7 @@ export default function HomeScreen() {
   };
 
   return (
-    <ScrollView style={{ padding: 20, paddingTop: 25 }}>
+    <View style={{ padding: 20, paddingTop: 25 }}>
       <View style={{
         display: 'flex', flexDirection: 'row',
         justifyContent: 'space-between', alignItems: 'center'
@@ -140,9 +140,10 @@ export default function HomeScreen() {
           style={{ width: 50, height: 50, borderRadius: 99 }}
         />
       </View>
-      <View style={{ paddingBottom: 30 }}>
+      <View style={{ paddingBottom: 80 }}>
         <FlatList
           data={videoList}
+          showsVerticalScrollIndicator={false}
           numColumns={2}
           style={{ display: 'flex' }}
           onRefresh={GetLatestVideoList}
@@ -153,6 +154,6 @@ export default function HomeScreen() {
           )}
         />
       </View>
-    </ScrollView>
+    </View>
   );
 }

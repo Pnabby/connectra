@@ -1,6 +1,6 @@
-import { View, Text, FlatList, Dimensions, ActivityIndicator } from 'react-native'
-import React, { useEffect, useState } from 'react'
-import { useNavigation, useRoute } from '@react-navigation/native'
+import { View, Text, FlatList, Dimensions, ActivityIndicator } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import PlayVideoListItem from './PlayVideoListItem';
 import { TouchableOpacity } from 'react-native-gesture-handler';
 import { Ionicons } from '@expo/vector-icons';
@@ -8,13 +8,13 @@ import { supabase } from '../../Utils/SupabaseConfig';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { useUser } from '@clerk/clerk-expo';
 
-export default function PlayVideoList({navigation}) {
+export default function PlayVideoList({ navigation }) {
   const params = useRoute().params;
   const [VideoList, setVideoList] = useState([]);
   const [loading, setLoading] = useState(false);
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
   const { user } = useUser();
-  const WindowHeight = Dimensions.get('window').height;
+  const WindowHeight = Dimensions.get('screen').height;
   const BottomTabHeight = useBottomTabBarHeight();
 
   useEffect(() => {
@@ -43,7 +43,7 @@ export default function PlayVideoList({navigation}) {
 
   const userLikeHandler = async (videoPost, isLike) => {
     if (!isLike) {
-      console.log("liking...")
+      console.log("liking...");
       const { data, error } = await supabase
         .from('VideoLikes')
         .insert([{
@@ -53,12 +53,12 @@ export default function PlayVideoList({navigation}) {
         .select();
       GetLatestVideoList();
     } else {
-      console.log("unliking...")
+      console.log("unliking...");
       const { error } = await supabase
         .from('VideoLikes')
         .delete()
         .eq('postIdRef', videoPost.id)
-        .eq('userEmail', user?.primaryEmailAddress?.emailAddress)
+        .eq('userEmail', user?.primaryEmailAddress?.emailAddress);
       GetLatestVideoList();
     }
   }
@@ -79,33 +79,34 @@ export default function PlayVideoList({navigation}) {
   }
 
   return (
-      <View>
-        <TouchableOpacity style={{ position: 'absolute', padding: 20, marginTop: 30 }}
-                          onPress={() => navigation.goBack()}
-        >
-          <Ionicons name="arrow-back" size={24} color="black" />
-        </TouchableOpacity>
-        <View style={{ zIndex: 1 }}>
-          <FlatList
-              data={VideoList}
-              pagingEnabled
-              onScroll={e => {
-                const index = Math.round(e.nativeEvent.contentOffset.y / (WindowHeight - BottomTabHeight));
-                setCurrentVideoIndex(index);
-              }}
-              renderItem={({ item, index }) => (
-                  <PlayVideoListItem
-                      video={item}
-                      key={item.id}
-                      index={index}
-                      activeIndex={currentVideoIndex}
-                      userLikeHandler={userLikeHandler}
-                      user={user}
-                      getLikesCount={getLikesCount}
-                  />
-              )}
-              keyExtractor={(item, index) => item.id.toString()}
-          />
-        </View>
-      </View>
-  )};
+    <View style={{ flex: 1 }}>
+      <TouchableOpacity style={{ position: 'absolute', padding: 20, marginTop: 30 }}
+                        onPress={() => navigation.goBack()}
+      >
+        <Ionicons name="arrow-back" size={24} color="black" />
+      </TouchableOpacity>
+      <FlatList
+        data={VideoList}
+        pagingEnabled
+        onScroll={e => {
+          const index = Math.round(e.nativeEvent.contentOffset.y / (WindowHeight - BottomTabHeight));
+          setCurrentVideoIndex(index);
+        }}
+        renderItem={({ item, index }) => (
+          <View style={{ height: WindowHeight - BottomTabHeight }}>
+            <PlayVideoListItem
+              video={item}
+              key={item.id}
+              index={index}
+              activeIndex={currentVideoIndex}
+              userLikeHandler={userLikeHandler}
+              user={user}
+              getLikesCount={getLikesCount}
+            />
+          </View>
+        )}
+        keyExtractor={(item, index) => item.id.toString()}
+      />
+    </View>
+  );
+}

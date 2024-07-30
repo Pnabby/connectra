@@ -49,7 +49,8 @@ export default function OpenChat({navigation}) {
           (newMessage.sender === user.primaryEmailAddress.emailAddress && newMessage.receiver === email) ||
           (newMessage.sender === email && newMessage.receiver === user.primaryEmailAddress.emailAddress)
         ) {
-          setChatMessages((prevMessages) => [...prevMessages, newMessage]);
+          fetchMessages();
+          //setChatMessages((prevMessages) => [...prevMessages, newMessage]);
           requestAnimationFrame(() => flatListRef.current.scrollToEnd({ animated: true }));
         }
       })
@@ -178,7 +179,7 @@ export default function OpenChat({navigation}) {
 
   const renderMessageItem = ({ item }) => (
     <View style={[styles.messageItem, item.sender === user.primaryEmailAddress.emailAddress ? styles.myMessage : styles.theirMessage]}>
-      {item.messagetype === 'text' ? (
+      {item.messagetype == 'text' ? (
         <Text style={item.sender === user.primaryEmailAddress.emailAddress ? styles.myMessageText : styles.theirMessageText}>{item.message}</Text>
       ) : (
         <TouchableOpacity onPress={() => playSound(item.message)}>
