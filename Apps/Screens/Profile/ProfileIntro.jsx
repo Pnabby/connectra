@@ -234,24 +234,15 @@ export default function ProfileIntro() {
             </View>
 
             <View style={{ alignItems: 'center', marginTop: 20 }}>
-                <LongPressGestureHandler
-                    onHandlerStateChange={({ nativeEvent }) => {
-                        if (nativeEvent.state === 4) { // State 4 is for long press
-                            handleProfileImageChange();
-                        }
-                    }}
-                >
-                    <View>
-                        <Image
-                            source={{ uri: profileImage }}
-                            style={{
-                                width: 70,
-                                height: 70,
-                                borderRadius: 99,
-                            }}
-                        />
-                    </View>
-                </LongPressGestureHandler>
+            <TouchableOpacity
+            onPress={handleProfileImageChange}
+            style={styles.profileImageContainer}
+            >
+            <Image
+                source={{ uri: profileImage }}
+                style={styles.profileImage}
+            />
+            </TouchableOpacity>
                 <Text
                     style={{
                         fontSize: 22,
@@ -333,4 +324,15 @@ const styles = StyleSheet.create({
     row: {
         justifyContent: 'space-between',
     },
+    profileImageContainer: {
+        width: 70,
+        height: 70,
+        borderRadius: 35, // Set to half of width/height to make it circular
+        overflow: 'hidden', // Ensure the image fits within the circular container
+      },
+      profileImage: {
+        width: '100%',
+        height: '100%',
+        borderRadius: 35,
+      },
 });
