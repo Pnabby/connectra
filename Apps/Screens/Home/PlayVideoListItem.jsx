@@ -84,7 +84,7 @@ export default function PlayVideoListItem({ video, activeIndex, index, userLikeH
   };
 
   return (
-      <View>
+      <View style={{height:Dimensions.get('window').height}}>
         <View style={styles.overlay}>
           <View>
             <View style={styles.userInfo}>
@@ -160,7 +160,7 @@ const styles = StyleSheet.create({
   video: {
     alignSelf: 'center',
     width: Dimensions.get('window').width,
-    height: Dimensions.get('window').height,
+    height: Dimensions.get('screen').height,
   },
   overlay: {
     position: 'absolute',
