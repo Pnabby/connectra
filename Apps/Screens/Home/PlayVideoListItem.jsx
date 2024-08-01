@@ -4,6 +4,7 @@ import { Video, ResizeMode } from 'expo-av';
 import Colors from '../../Utils/Colors';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from "../../Utils/SupabaseConfig";
+import * as Sharing from 'expo-sharing';
 
 export default function PlayVideoListItem({ video, activeIndex, index, userLikeHandler, user, navigation }) {
   const videoRef = useRef(null);
@@ -18,6 +19,7 @@ export default function PlayVideoListItem({ video, activeIndex, index, userLikeH
   useEffect(() => {
     // Check if the user has already liked the video on mount
     setCheckLike(!!video.VideoLikes?.find(item => item.userEmail === user.primaryEmailAddress.emailAddress));
+
   }, [video]);
 
   const handleLikePress = async () => {
@@ -66,6 +68,21 @@ export default function PlayVideoListItem({ video, activeIndex, index, userLikeH
     }
   };
 
+  const handleSharePress = async () => {
+    const message = `Check out this video: ${video.videoUrl}`;
+    const result = await Sharing.shareAsync({
+      message,
+      url: video.videoUrl,
+      title: video.title,
+    });
+
+    if (result.action === Sharing.sharedAction) {
+      console.log('Shared successfully!');
+    } else {
+      console.log('Share cancelled');
+    }
+  };
+
   return (
       <View>
         <View style={styles.overlay}>
@@ -84,7 +101,9 @@ export default function PlayVideoListItem({ video, activeIndex, index, userLikeH
             <TouchableHighlight onPress={handleCommentPress}>
               <Ionicons name="chatbubble-outline" size={40} color="white" />
             </TouchableHighlight>
-            <Ionicons name="share-social-outline" size={40} color="white" />
+            <TouchableHighlight onPress={handleSharePress}>
+              <Ionicons name="share-social-outline" size={40} color="white" />
+            </TouchableHighlight>
           </View>
         </View>
         <Video
