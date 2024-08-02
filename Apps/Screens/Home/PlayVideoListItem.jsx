@@ -12,13 +12,31 @@ export default function PlayVideoListItem({ video, activeIndex, index, userLikeH
   const commentInputRef = useRef(null);
   const [status, setStatus] = useState({});
   const [checkLike, setCheckLike] = useState(false);
+  const [commentCount, setcommentCount] = useState(video?.VideoLikes?.length || 0);
   const [likeCount, setLikeCount] = useState(video?.VideoLikes?.length || 0);
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState('');
   const [showCommentModal, setShowCommentModal] = useState(false);
   const [isPlaying, setIsPlaying] = useState(activeIndex === index); // Track if video is playing
+
+  const getcommentCount = async () => {
+    const { data, error } = await supabase
+      .from('Comments')
+      .select('*', { count: 'exact' })
+      .eq('postIdRef', video.id);
+
+    if (error) {
+      console.error('Error fetching likes count:', error);
+      return 0;
+    }
+    setcommentCount(data.length)
+    return data.length;
+  }
+
+
   useEffect(() => {
     // Check if the user has already liked the video on mount
+    getcommentCount()
     setCheckLike(!!video.VideoLikes?.find(item => item.userEmail === user.primaryEmailAddress.emailAddress));
   }, [video]);
 
@@ -52,6 +70,7 @@ export default function PlayVideoListItem({ video, activeIndex, index, userLikeH
     } else {
       setNewComment('')
       getComments();
+      getcommentCount();
       console.log('Comment inserted successfully!');
     }
     }
@@ -99,6 +118,7 @@ export default function PlayVideoListItem({ video, activeIndex, index, userLikeH
       } else {
         console.log('Comment deleted successfully!');
         setComments(comments.filter(c => c.id !== comment.id)); // Update state to remove the deleted comment
+        getcommentCount()
       }
     } catch (error) {
       console.error('Unexpected error deleting comment:', error);
@@ -114,7 +134,7 @@ export default function PlayVideoListItem({ video, activeIndex, index, userLikeH
     const message = `Check out this video: ${video.videoUrl}`;
     const result = await Sharing.shareAsync({
       message,
-      url: video.videoUrl,
+      url: videouri.toString(),
       title: video.title,
     });
 
@@ -152,6 +172,7 @@ export default function PlayVideoListItem({ video, activeIndex, index, userLikeH
           <TouchableHighlight onPress={handleCommentPress}>
             <Ionicons name="chatbubble-outline" size={40} color="white" />
           </TouchableHighlight>
+          <Text style={styles.likeCount}>{commentCount}</Text>
           <TouchableHighlight onPress={handleSharePress}>
             <Ionicons name="share-social-outline" size={40} color="white" />
           </TouchableHighlight>

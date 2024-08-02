@@ -92,8 +92,8 @@ export default function ChatScreen() {
               onError={(e) => console.error('Error loading image', e.nativeEvent.error)}
             />
             <View style={styles.friendInfo}>
-              <Text style={styles.name}>{item.name}</Text>
-              <Text style={styles.username}>{item.username}</Text>
+              <Text style={styles.name}>{item.username}</Text>
+              <Text style={styles.username}>{item.name}</Text>
             </View>
           </TouchableOpacity>
         )}

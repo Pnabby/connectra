@@ -205,7 +205,9 @@ export default function OpenChat({navigation}) {
           <TouchableOpacity style={styles.callButton}>
             <Ionicons name="call" size={24} color="white" />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.callButton}>
+          <TouchableOpacity style={styles.callButton}
+            onPress={()=>navigation.navigate('VideoCall')}
+          >
             <MaterialIcons name="videocam" size={24} color="white" />
           </TouchableOpacity>
         </View>

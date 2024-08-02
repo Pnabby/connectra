@@ -4,11 +4,11 @@
     "slug": "firstApp",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/newsplashr.png",
     "userInterfaceStyle": "light",
     "scheme": "firstApp",
     "splash": {
-      "image": "./assets/images/splash.png",
+      "image": "./assets/images/Connectra.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
